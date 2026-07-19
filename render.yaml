@@ -15,8 +15,10 @@ services:
     plan: free
     region: frankfurt
     buildCommand: "./build.sh"
-    # Миграции выполняются при старте (БД уже доступна), затем поднимается gunicorn.
-    startCommand: "python manage.py migrate --no-input && gunicorn core.wsgi:application --bind 0.0.0.0:$PORT"
+    # Сначала миграции (БД уже доступна), затем gunicorn.
+    # --workers 1 --threads: один процесс => общий LocMemCache между запросами,
+    # иначе кэш статей у каждого воркера свой и страница статьи «теряет» новость.
+    startCommand: "python manage.py migrate --no-input && gunicorn core.wsgi:application --workers 1 --threads 4 --bind 0.0.0.0:$PORT"
     envVars:
       # Версия Python (совпадает с локальной разработкой).
       - key: PYTHON_VERSION
@@ -38,9 +40,6 @@ services:
         value: "ru"
       - key: GNEWS_CACHE_TTL
         value: "1800"
-      # Число воркеров gunicorn.
-      - key: WEB_CONCURRENCY
-        value: "4"
       - key: LANGUAGE_CODE
         value: "ru"
       - key: TIME_ZONE
