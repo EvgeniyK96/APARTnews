@@ -22,6 +22,20 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
+# ------------------------------------------------------------
+# Деплой на Render (https://render.com)
+# Render передаёт публичный домен в RENDER_EXTERNAL_HOSTNAME.
+# ------------------------------------------------------------
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", default=[])
+RENDER_EXTERNAL_HOSTNAME = env("RENDER_EXTERNAL_HOSTNAME", default="")
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    # Нужно, чтобы формы (вход, комментарии, избранное) проходили CSRF по HTTPS.
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
+# Render терминирует TLS на своём прокси и проксирует запрос по HTTP.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 INSTALLED_APPS = [
     "jazzmin",
     "django.contrib.admin",
@@ -40,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -87,6 +102,15 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / env("STATIC_ROOT", default="staticfiles")
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# WhiteNoise раздаёт собранную статику прямо из gunicorn (без Nginx/CDN),
+# со сжатием и хешированием имён файлов.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / env("MEDIA_ROOT", default="media")

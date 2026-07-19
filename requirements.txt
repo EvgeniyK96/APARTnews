@@ -8,3 +8,5 @@ django-jazzmin
 Pillow
 psycopg2-binary
 trafilatura
+gunicorn
+whitenoise

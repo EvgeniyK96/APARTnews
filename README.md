@@ -189,20 +189,37 @@ python manage.py check # проверка конфигурации Django
 
 ## Деплой
 
-1. Сгенерируй новый `SECRET_KEY`.
-2. Выставь `DEBUG=False`.
-3. Укажи реальный домен в `ALLOWED_HOSTS`.
-4. Переключись на PostgreSQL через `DATABASE_URL`.
-5. Собери статику: `python manage.py collectstatic --noinput`.
-6. Раздавай статику/медиа через Nginx или облачное хранилище.
-7. Запускай через Gunicorn:
+### Render.com (Blueprint)
+
+В проекте есть готовый [`render.yaml`](render.yaml) — он поднимает веб-сервис (gunicorn + WhiteNoise) и базу PostgreSQL одним кликом.
+
+1. Залей репозиторий на GitHub/GitLab.
+2. В дашборде Render: **New → Blueprint** → выбери репозиторий. Render прочитает `render.yaml`.
+3. Впиши единственную секретную переменную — **`GNEWS_API_KEY`** (в Blueprint она помечена `sync: false`, поэтому её нужно ввести вручную). Остальное подставится автоматически:
+   - `SECRET_KEY` — Render сгенерирует сам;
+   - `DATABASE_URL` — из созданной базы `apartnews-db`;
+   - `DEBUG=False`, `GNEWS_LANG=ru`, `TIME_ZONE`, `PYTHON_VERSION` и т.д. — из `render.yaml`.
+4. Нажми **Apply**. При деплое выполнится [`build.sh`](build.sh): `pip install` → `collectstatic` → `migrate`, затем стартует `gunicorn core.wsgi:application`.
+
+Что уже настроено под Render в коде:
+- **WhiteNoise** раздаёт собранную статику прямо из gunicorn — Nginx/CDN не нужны.
+- `ALLOWED_HOSTS` и `CSRF_TRUSTED_ORIGINS` автоматически дополняются доменом из `RENDER_EXTERNAL_HOSTNAME` (иначе формы входа/комментариев ломались бы по CSRF на HTTPS).
+- `SECURE_PROXY_SSL_HEADER` — учитывает, что TLS терминируется на прокси Render.
+
+> **Про free-план Render:** веб-сервис засыпает после 15 минут простоя и просыпается при первом запросе (первый ответ будет медленным), а бесплатная база PostgreSQL живёт 30 дней. Для постоянной работы возьми платный план.
+
+> **Про кеш GNews:** `LocMemCache` живёт в памяти одного процесса, поэтому при нескольких воркерах кеш у каждого свой. Для общего кеша между воркерами настрой Redis/Memcached в `CACHES`.
+
+### Вручную / другой хостинг
+
+1. Сгенерируй новый `SECRET_KEY`, выставь `DEBUG=False`, укажи домен в `ALLOWED_HOSTS`.
+2. Переключись на PostgreSQL через `DATABASE_URL`.
+3. Собери статику: `python manage.py collectstatic --no-input` и накати миграции `python manage.py migrate`.
+4. Запускай через Gunicorn:
 
 ```bash
-pip install gunicorn
 gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4
 ```
-
-> Учти лимиты GNews при продакшн-нагрузке: `LocMemCache` живёт в памяти одного процесса, поэтому при нескольких воркерах кеш у каждого свой. Для общего кеша между воркерами настрой Redis/Memcached в `CACHES`.
 
 ---
 
@@ -224,6 +241,8 @@ news/
 ├── static/css/site.css        # Тема под ТАСС в зелёных тонах + адаптив
 ├── tests/
 ├── .env.example
+├── render.yaml                # Blueprint для деплоя на Render (web + PostgreSQL)
+├── build.sh                   # Build-скрипт Render: install → collectstatic → migrate
 ├── docker-compose.yml · Dockerfile
 ├── requirements.txt · requirements-dev.txt
 ├── manage.py
