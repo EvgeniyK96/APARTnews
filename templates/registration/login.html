@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Вход · APARTnews{% endblock %}
+
+{% block content %}
+<div class="auth">
+    <div class="auth__card">
+        <h1 class="auth__title">Вход</h1>
+        {% if form.errors %}
+            <div class="field-error">Неверное имя пользователя или пароль.</div>
+        {% endif %}
+        <form method="post" class="auth__form">
+            {% csrf_token %}
+            {% for field in form %}
+                <label class="field">
+                    <span class="field__label">{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}<span class="field-error">{{ field.errors }}</span>{% endif %}
+                </label>
+            {% endfor %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <button type="submit" class="btn btn--solid btn--block">Войти</button>
+        </form>
+        <p class="auth__alt">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+    </div>
+</div>
+{% endblock %}

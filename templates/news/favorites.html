@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load news_extras %}
+
+{% block title %}Избранное · APARTnews{% endblock %}
+
+{% block content %}
+<div class="pagehead">
+    <h1 class="pagehead__title">Избранное</h1>
+    <p class="pagehead__sub">Ваша коллекция разделов и новостей</p>
+</div>
+
+<div class="fav-cats">
+    <h2 class="section-title">Избранные категории</h2>
+    {% if favorite_categories %}
+        <div class="chips">
+            {% for cat in favorite_categories %}
+                <span class="chip">
+                    <a href="{% url 'feed' %}?category={{ cat.slug }}">{{ cat.label }}</a>
+                    <form action="{% url 'toggle_favorite_category' %}" method="post" class="inline-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="category" value="{{ cat.slug }}">
+                        <input type="hidden" name="next" value="{% url 'favorites' %}">
+                        <button type="submit" class="chip__x" title="Убрать">✕</button>
+                    </form>
+                </span>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="hint">Категории не добавлены. Откройте любую категорию и нажмите «Добавить в избранное».</p>
+    {% endif %}
+</div>
+
+<div class="fav-articles">
+    <h2 class="section-title">Избранные новости</h2>
+    {% if favorite_articles %}
+        <div class="newslist">
+            {% for article in favorite_articles %}
+                {% include "news/_card.html" %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="hint">Новостей в избранном пока нет.</p>
+    {% endif %}
+</div>
+{% endblock %}

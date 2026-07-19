@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load news_extras %}
+
+{% block title %}{{ heading }} · APARTnews{% endblock %}
+
+{% block content %}
+<div class="pagehead">
+    <h1 class="pagehead__title">{{ heading }}</h1>
+    {% if subheading %}<p class="pagehead__sub">{{ subheading }}</p>{% endif %}
+
+    {% if active_category %}
+        <div class="cat-actions">
+            {% if user.is_authenticated %}
+                <form action="{% url 'toggle_favorite_category' %}" method="post" class="inline-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="category" value="{{ active_category }}">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    {% if active_category in favorite_categories %}
+                        <button class="btn btn--ghost" type="submit">★ Убрать раздел из избранного</button>
+                    {% else %}
+                        <button class="btn btn--solid" type="submit">☆ Добавить раздел в избранное</button>
+                    {% endif %}
+                </form>
+            {% else %}
+                <p class="hint">Войдите, чтобы добавить раздел в избранное и получать его новости первыми.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+{% if error %}
+    <div class="empty"><p>{{ error }}</p></div>
+{% elif not articles %}
+    <div class="empty"><p>Новостей не нашлось. Попробуйте другой раздел или запрос.</p></div>
+{% else %}
+<div class="feed">
+    <div class="feed__main">
+        {% for article in articles %}
+            {% if forloop.first %}
+                <article class="lead">
+                    <a href="{% url 'article_detail' article_id=article.id %}" class="lead__media">
+                        {% if article.image %}
+                            <img src="{{ article.image }}" alt="" loading="lazy">
+                        {% else %}
+                            <span class="lead__media--empty"></span>
+                        {% endif %}
+                    </a>
+                    <div class="lead__text">
+                        <div class="newsitem__meta">
+                            {% if article.publishedAt %}<time class="newsitem__time">{{ article.publishedAt|slice:"11:16" }}</time>{% endif %}
+                            {% if article.category %}<span class="newsitem__cat">{{ article.category|category_label }}</span>{% endif %}
+                            {% if article.source_name %}<span class="newsitem__src">{{ article.source_name }}</span>{% endif %}
+                        </div>
+                        <h2 class="lead__title">
+                            <a href="{% url 'article_detail' article_id=article.id %}">{{ article.title }}</a>
+                        </h2>
+                        {% if article.description %}<p class="lead__desc">{{ article.description|truncatechars:220 }}</p>{% endif %}
+                    </div>
+                </article>
+                <div class="newslist">
+            {% else %}
+                {% include "news/_card.html" %}
+            {% endif %}
+        {% endfor %}
+        </div>
+    </div>
+
+    <aside class="feed__aside">
+        <div class="aside-box">
+            <h2 class="aside-box__title">Разделы</h2>
+            <ul class="aside-links">
+                {% for cat in categories %}
+                    <li><a href="{% url 'feed' %}?category={{ cat.slug }}" class="{% if cat.is_active %}is-active{% endif %}">{{ cat.label }}{% if cat.is_favorite %} <span class="star">★</span>{% endif %}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if not user.is_authenticated %}
+        <div class="aside-box aside-box--cta">
+            <h2 class="aside-box__title">Ваша лента новостей</h2>
+            <p>Зарегистрируйтесь, чтобы добавлять новости и разделы в избранное и комментировать.</p>
+            <a href="{% url 'register' %}" class="btn btn--solid btn--block">Создать аккаунт</a>
+        </div>
+        {% endif %}
+    </aside>
+</div>
+{% endif %}
+{% endblock %}
