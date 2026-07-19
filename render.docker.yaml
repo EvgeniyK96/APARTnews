@@ -1,6 +1,10 @@
-# Render Blueprint (https://render.com/docs/blueprint-spec)
-# Разворачивает веб-сервис APARTnews + базу PostgreSQL.
-# Импорт: в дашборде Render → New → Blueprint → выбрать этот репозиторий.
+# Render Blueprint — вариант деплоя через Docker.
+# Чтобы использовать его вместо нативного (render.yaml), переименуй этот файл
+# в render.yaml (Render читает только render.yaml) и импортируй в дашборде:
+# New → Blueprint → выбрать репозиторий.
+#
+# Отличие от нативного варианта: сборка идёт по Dockerfile, а миграции и
+# collectstatic выполняет docker-entrypoint.sh при старте контейнера.
 
 databases:
   - name: apartnews-db
@@ -11,22 +15,17 @@ databases:
 services:
   - type: web
     name: apartnews
-    runtime: python
+    runtime: docker
     plan: free
     region: frankfurt
-    buildCommand: "./build.sh"
-    # Миграции выполняются при старте (БД уже доступна), затем поднимается gunicorn.
-    startCommand: "python manage.py migrate --no-input && gunicorn core.wsgi:application --bind 0.0.0.0:$PORT"
+    dockerfilePath: ./Dockerfile
     envVars:
-      # Версия Python (совпадает с локальной разработкой).
-      - key: PYTHON_VERSION
-        value: "3.12.6"
       # Render сгенерирует случайный секретный ключ сам.
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
         value: "False"
-      # Подключение к БД выше — Render подставит строку подключения.
+      # Строка подключения из базы выше.
       - key: DATABASE_URL
         fromDatabase:
           name: apartnews-db

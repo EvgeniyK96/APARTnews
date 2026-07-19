@@ -27,9 +27,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+    # migrate и collectstatic выполняет docker-entrypoint.sh; здесь только
+    # переопределяем production-CMD на dev-сервер с автоперезагрузкой.
+    command: python manage.py runserver 0.0.0.0:8000
 
 volumes:
   postgres_data:

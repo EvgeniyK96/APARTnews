@@ -8,6 +8,6 @@ pip install -r requirements.txt
 # Собрать статику (WhiteNoise раздаст её из gunicorn).
 python manage.py collectstatic --no-input
 
-# Накатить миграции. На платных планах Render это лучше вынести
-# в preDeployCommand, но на free-плане держим здесь.
-python manage.py migrate
+# Миграции НЕ здесь: во время сборки база из блупринта ещё может быть
+# недоступна, из-за чего билд падает. Их выполняет startCommand при
+# старте контейнера (см. render.yaml), когда БД уже готова.
