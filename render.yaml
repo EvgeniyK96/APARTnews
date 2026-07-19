@@ -5,6 +5,9 @@
 databases:
   - name: apartnews-db
     plan: free
+    # Регион ОБЯЗАТЕЛЬНО тот же, что у веб-сервиса ниже, иначе внутренний
+    # хост базы (dpg-...-a) не резолвится и приложение не подключится к БД.
+    region: frankfurt
     databaseName: apartnews
     user: apartnews
 
