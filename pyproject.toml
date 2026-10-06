@@ -12,10 +12,17 @@ dependencies = [
     "django-jazzmin",
     "Pillow",
     "psycopg2-binary",
+    "requests",
     "trafilatura",
     "gunicorn",
     "whitenoise",
 ]
+[tool.vercel]
+entrypoint = "core.wsgi:application"
+
+[tool.vercel.scripts]
+build = "python vercel_build.py"
+
 [tool.ruff]
 line-length = 120
 target-version = "py312"

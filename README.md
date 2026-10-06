@@ -119,7 +119,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 
 ## Как это устроено
 
-Сайт работает в режиме **прокси к GNews** — лента не хранится в БД целиком, каждая подборка запрашивается у GNews и смягчается коротким кешем в памяти (`LocMemCache`).
+Сайт работает в режиме **прокси к GNews** — лента не хранится в БД целиком, каждая подборка запрашивается у GNews и смягчается коротким кешем (локально — в памяти, `LocMemCache`; на Vercel — в базе, см. [Деплой](#vercel)).
 
 - **Клиент GNews** — [`apps/news/services.py`](apps/news/services.py): запросы к API, кеширование, парсер полного текста (`extract_fulltext`).
 - **Вьюхи** — [`apps/news/views.py`](apps/news/views.py): лента, детальная страница с полным текстом и комментариями, избранное, регистрация.
@@ -189,6 +189,29 @@ python manage.py check # проверка конфигурации Django
 
 ## Деплой
 
+### Vercel
+
+Vercel поддерживает Django без отдельной конфигурации: находит `manage.py`, берёт WSGI-приложение (`core.wsgi:application`, явно указано в `[tool.vercel]` в [`pyproject.toml`](pyproject.toml)) и запускает его как одну Vercel Function. Статику Vercel собирает сам (`collectstatic` → `STATIC_ROOT`) и раздаёт её со своего CDN.
+
+1. Залей репозиторий на GitHub/GitLab и импортируй его на [vercel.com/new](https://vercel.com/new) (или `vercel deploy` из папки проекта, Vercel CLI ≥ 50.38).
+2. Подключи PostgreSQL: **Storage → Marketplace → Neon** (или любой внешний Postgres). Интеграция сама добавит `DATABASE_URL`. SQLite на Vercel не подходит: файловая система функции только для чтения и не переживает перезапуск.
+3. В **Settings → Environment Variables** добавь:
+   - `SECRET_KEY` — длинная случайная строка (`python -c "import secrets; print(secrets.token_urlsafe(50))"`);
+   - `GNEWS_API_KEY` — ключ GNews;
+   - `DEBUG=False`;
+   - при желании `GNEWS_LANG`, `TIME_ZONE`, `GNEWS_CACHE_TTL`.
+4. Запусти деплой. После установки зависимостей выполнится [`vercel_build.py`](vercel_build.py): `migrate` + `createcachetable`.
+5. Создай суперпользователя локально, указав прод-базу: `DATABASE_URL=<url из Vercel> python manage.py createsuperuser`.
+
+Что уже настроено под Vercel в коде:
+- `ALLOWED_HOSTS` и `CSRF_TRUSTED_ORIGINS` автоматически дополняются доменами из `VERCEL_URL`, `VERCEL_BRANCH_URL` и `VERCEL_PROJECT_PRODUCTION_URL` (прод, preview-деплои и домены веток). Свой домен добавь в `ALLOWED_HOSTS` и `CSRF_TRUSTED_ORIGINS` (`https://example.com`).
+- **Кэш GNews на Vercel хранится в базе** (`dbcache://django_cache`): память функции теряется при холодном старте и не общая между инстансами, а с `LocMemCache` бесплатный лимит GNews быстро бы кончился. Бэкенд можно сменить через `CACHE_URL` (например, `redis://...` для Upstash Redis — тогда добавь пакет `redis` в зависимости).
+- [`.vercelignore`](.vercelignore) не даёт загрузить `venv/`, локальную базу и Docker/Render-файлы.
+
+> **Регион:** по умолчанию функции Vercel работают в `iad1` (США). Регион базы Neon выбирай рядом с регионом функций, иначе каждый запрос к БД будет идти через океан. Регион функций меняется в **Settings → Functions**.
+
+> **Preview-деплои** используют те же переменные, что и прод, если не разделить их по окружениям. Чтобы миграции из веток не попадали в прод-базу, задай для окружения Preview отдельный `DATABASE_URL` (у Neon для этого есть ветки базы).
+
 ### Render.com (Blueprint)
 
 В проекте есть готовый [`render.yaml`](render.yaml) — он поднимает веб-сервис (gunicorn + WhiteNoise) и базу PostgreSQL одним кликом.
@@ -243,6 +266,8 @@ news/
 ├── .env.example
 ├── render.yaml                # Blueprint для деплоя на Render (web + PostgreSQL)
 ├── build.sh                   # Build-скрипт Render: install → collectstatic → migrate
+├── vercel_build.py            # Build-шаг Vercel: migrate + createcachetable
+├── .vercelignore              # Что не загружать в Vercel
 ├── docker-compose.yml · Dockerfile
 ├── requirements.txt · requirements-dev.txt
 ├── manage.py

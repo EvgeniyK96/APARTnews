@@ -1,0 +1,22 @@
+# Не загружать в Vercel при `vercel deploy` из локальной папки
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.sqlite3
+staticfiles/
+media/
+.pytest_cache/
+.ruff_cache/
+.github/
+tests/
+Dockerfile
+docker-compose.yml
+docker-entrypoint.sh
+.dockerignore
+render.yaml
+render.docker.yaml
+build.sh

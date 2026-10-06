@@ -15,6 +15,8 @@ env = environ.Env(
 )
 
 environ.Env.read_env(BASE_DIR / ".env")
+# Vercel выставляет VERCEL=1 и при сборке, и в рантайме функции.
+ON_VERCEL = bool(env("VERCEL", default=""))
 
 SECRET_KEY = env("SECRET_KEY")
 
@@ -33,7 +35,19 @@ if RENDER_EXTERNAL_HOSTNAME:
     # Нужно, чтобы формы (вход, комментарии, избранное) проходили CSRF по HTTPS.
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
-# Render терминирует TLS на своём прокси и проксирует запрос по HTTP.
+# ------------------------------------------------------------
+# Деплой на Vercel (https://vercel.com)
+# VERCEL_URL — домен конкретного деплоя (в т.ч. preview),
+# VERCEL_BRANCH_URL — домен ветки, VERCEL_PROJECT_PRODUCTION_URL — прод-домен.
+# Свои домены добавляй через ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS.
+# ------------------------------------------------------------
+for _var in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+    _host = env(_var, default="")
+    if _host and _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
+        CSRF_TRUSTED_ORIGINS.append(f"https://{_host}")
+
+# Render и Vercel терминируют TLS на своём прокси и проксируют запрос по HTTP.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
@@ -152,12 +166,16 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "feed"
 LOGOUT_REDIRECT_URL = "feed"
 
-# Кэш для ответов GNews (proxy с коротким TTL, чтобы не упираться в лимиты)
+# Кэш для ответов GNews (proxy с коротким TTL, чтобы не упираться в лимиты).
+# Локально — память процесса. На Vercel память живёт только в одном инстансе
+# функции и теряется при холодном старте, поэтому там по умолчанию кэш в БД
+# (таблицу создаёт `manage.py createcachetable` в vercel_build.py).
+# Переопределяется через CACHE_URL, например redis://... или dbcache://table.
 CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "gnews-cache",
-    }
+    "default": env.cache(
+        "CACHE_URL",
+        default="dbcache://django_cache" if ON_VERCEL else "locmemcache://gnews-cache",
+    )
 }
 
 # ------------------------------------------------------------

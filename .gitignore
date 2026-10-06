@@ -39,3 +39,7 @@ postgres_data/
 
 # macOS
 .DS_Store
+
+# Vercel
+.vercel/
+.env.local
