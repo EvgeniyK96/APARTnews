@@ -118,11 +118,15 @@ STATIC_ROOT = BASE_DIR / env("STATIC_ROOT", default="staticfiles")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # WhiteNoise раздаёт собранную статику прямо из gunicorn (без Nginx/CDN),
-# со сжатием и хешированием имён файлов.
+# со сжатием и хешированием имён файлов (см. core/storage.py).
+# На Vercel статику раздаёт их CDN, поэтому там берём штатное хранилище
+# без хеширования — его Vercel официально поддерживает.
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage" if ON_VERCEL else "core.storage.StaticStorage"
+        ),
     },
 }
 
