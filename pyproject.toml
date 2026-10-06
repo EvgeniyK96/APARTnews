@@ -1,3 +1,21 @@
+[project]
+name = "apartnews"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "Django",
+    "djangorestframework",
+    "djangorestframework-simplejwt",
+    "djoser",
+    "drf-yasg",
+    "django-environ",
+    "django-jazzmin",
+    "Pillow",
+    "psycopg2-binary",
+    "trafilatura",
+    "gunicorn",
+    "whitenoise",
+]
 [tool.ruff]
 line-length = 120
 target-version = "py312"
